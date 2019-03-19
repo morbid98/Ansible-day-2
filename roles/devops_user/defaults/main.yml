@@ -1,0 +1,5 @@
+---
+# defaults file for devops_user
+user: devops
+password: 'devops'
+groups_dev: wheel

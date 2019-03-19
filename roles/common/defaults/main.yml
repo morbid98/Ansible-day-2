@@ -1,0 +1,6 @@
+tables:
+  - net.bridge.bridge-nf-call-iptables
+  - net.bridge.bridge-nf-call-ip6tables
+packages_to_install: 
+  - yum-utils
+  - ntp

@@ -1,0 +1,15 @@
+- name: k8s-base
+  hosts: all
+  roles:
+    - k8s-base
+  become: yes
+- name: k8s-master
+  hosts: masters
+  roles:
+    - k8s-master
+  become: yes
+- name: k8s-worker
+  hosts: workers
+  roles:
+    - k8s-worker
+  become: yes

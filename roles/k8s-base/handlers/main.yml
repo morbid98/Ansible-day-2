@@ -1,0 +1,11 @@
+---
+# handlers file for k8s-base
+- name: kubeadm_facts
+  copy:
+    content: >
+      {
+        "Version": "{{ kubeadm.stdout }}",
+        "Date of creation": "{{ ansible_date_time.iso8601 }}"
+      }
+  dest: /etc/ansible/facts.d/kubeadm.fact
+

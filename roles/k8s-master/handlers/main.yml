@@ -1,0 +1,9 @@
+---
+# handlers file for k8s-master
+- name: create_token
+  shell: |
+    kubeadm token list | awk '{print $1}'|awk 'NR==2{print $1}' > /vagrant/token
+    chmod 754 /vagrant/token
+    openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null |  openssl dgst -sha256 -hex | sed 's/^.* //' >> /vagrant/token
+  changed_when: False
+  become: yes

@@ -1,0 +1,40 @@
+---
+# tasks file for docker
+- name: install repo
+  get_url:
+    url: '{{ docker_repo }}'
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: 0644
+- name: install docker
+  yum:
+    name: docker-ce
+    state: present
+- name: fix  systemd for docker
+  lineinfile:
+    path: /usr/lib/systemd/system/docker.service
+    regexp: ExecStart
+    line: ExecStart=/usr/bin/dockerd
+- name: set cgroup to systemd
+  blockinfile:
+    block: |
+      {
+        "exec-opts": [
+          "native.cgroupdriver=systemd"
+        ]
+      }
+    create: yes
+    path: /etc/docker/daemon.json
+    marker: ""
+- name: start-docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+    daemon_reload: yes
+- name: get version
+  shell: docker -v| awk '{print $3}'|cut -f1 -d ','
+  register: version
+- name: get build
+  shell: docker -v| awk '{print $5}
+  register: build
+  changed_when: False

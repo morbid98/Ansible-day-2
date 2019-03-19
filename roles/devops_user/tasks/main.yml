@@ -1,0 +1,27 @@
+---
+# tasks file for devops_user
+- name: "Create user accounts and add users to groups"
+  user:
+    name: '{{ user }}'
+    groups: '{{ groups_dev }}'
+    password: "{{ 'devops' | password_hash('sha512')}}"
+    update_password: on_create
+    append: yes
+  notify: user_facts
+- name: Allow 'wheel' group to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%wheel'
+    line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+- name: create-dir
+  file:
+    path: /home/{{ user }}/.ssh
+    state: directory
+    owner: '{{ user }}'
+    group: '{{ user }}'
+  become: yes
+- name: "Configure ssh access"
+  copy:
+    src: ~/ansible/day2/{{ user }}.pem
+    dest: /home/{{ user }}/.ssh/authorized_keys

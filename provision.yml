@@ -1,0 +1,117 @@
+- hosts: all
+  tasks: 
+  - name: Get needed stuff for docker
+    yum:
+      name:  yum-utils
+      state: installed
+  - name: install repo
+    get_url:
+      url: https://download.docker.com/linux/centos/docker-ce.repo
+      dest: /etc/yum.repos.d/docker-ce.repo
+      mode: 0644
+  - name: install docker
+    yum:
+      name: docker-ce
+      state: present
+  - name: "start and enable docker"
+    service:
+      name: docker
+      state: started
+      enabled: yes
+  
+  - name: "turn off selinux"
+    lineinfile:
+      path: /etc/selinux/config
+      regexp: '^SELINUX='
+      line: 'SELINUX=permissive'
+  - name: Disable swap
+    lineinfile:
+      path: /etc/fstab
+      regexp: 'swap'
+      state: absent
+  - name: "create kubik repo"
+    blockinfile:
+      path: /etc/yum.repos.d/kubernetes.repo
+      create: yes
+      block: |
+              [kubernetes]
+              name=Kubernetes
+              baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+              enabled=1
+              gpgcheck=1
+              repo_gpgcheck=1
+              gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+              exclude=kube*
+  - name: "fix iptables"
+    sysctl:
+      name: "{{ item }}"
+      value: 1
+      state: present
+      reload: yes
+    with_items:
+      - net.bridge.bridge-nf-call-iptables
+      - net.bridge.bridge-nf-call-ip6tables
+  - name: Install a list of packages
+    yum:
+      name:
+        - kubectl
+        - kubeadm
+        - kubelet
+      state: present
+      disable_excludes: kubernetes
+  - name: "start and enable kubelet"
+    service:
+      name: kubelet
+      state: started
+      enabled: yes
+- hosts: master
+  tasks:
+  - name: kube init
+    command: kubeadm init --pod-network-cidr 10.244.0.0/16 --apiserver-advertise-address 192.168.56.15
+    register: output
+    args:
+      creates: /etc/kubernetes/manifests/kube-controller-manager.yaml
+    failed_when: "'Failed' in output.stdout"
+  - name: Create directory for kubectl
+    file:
+      path: /home/devops/.kube
+      state: directory
+      owner: devops
+      group: devops
+  - name: example copying file with owner and permissions
+    become: yes
+    copy:
+      src: /etc/kubernetes/admin.conf
+      dest: /home/devops/.kube/config
+      owner: devops
+      group: devops
+      remote_src: yes
+  - name: apply flannel
+    command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
+    register: apply_output
+    changed_when: "'configured' in apply_output.stdout"
+  - name: patch flannel
+    shell: |
+      IPETHX=$(ip r | grep $(hostname -I | sed 's/10.0.2.15//' | awk '{print $1}') | cut -d' ' -f3)
+      kubectl patch daemonsets kube-flannel-ds-amd64 -n kube-system --patch='{"spec":{"template":{"spec":{"containers":[{"name": "kube-flannel", "args": ["--ip-masq", "--kube-subnet-mgr", "--iface='${IPETHX}'"]}]}}}}'
+      kubeadm token list | awk '{print $1}'|awk 'NR==2{print $1}' > /vagrant/token
+      openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | \
+      openssl dgst -sha256 -hex | sed 's/^.* //' >> /vagrant/token
+    changed_when: False
+    become: yes
+
+- hosts: worker
+  tasks:
+  - name: kube join
+    shell: |
+      kubeadm join 192.168.56.15:6443 --token $(head -1 /vagrant/token) \
+      --discovery-token-ca-cert-hash \
+      sha256:$(sed -n 2p /vagrant/token)
+    register: output
+    args:
+      creates:  /etc/kubernetes/bootstrap-kubelet.conf
+    failed_when: "'already exists' in output.stdout"
+
+
+
+

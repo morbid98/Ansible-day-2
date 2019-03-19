@@ -1,0 +1,4 @@
+---
+# defaults file for k8s-master
+master_ip: 192.168.56.15
+flannel_address: https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml

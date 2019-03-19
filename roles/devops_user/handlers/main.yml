@@ -1,0 +1,9 @@
+---
+# handlers file for devops_user
+- name: user_facts
+  copy:
+    content: >
+      {
+        "Username for kubernetes": "{{ user }}"
+      }
+  dest: /etc/ansible/facts.d/user.fact

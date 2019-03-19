@@ -1,0 +1,37 @@
+- name: Get needed stuff for docker
+  yum:
+    name: '{{ packages_to_install }}'
+    state: installed
+- name: "turn off selinux"
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX='
+    line: 'SELINUX=permissive'
+- name: Disable_swap
+  command: swapoff --all
+  when: ansible_swaptotal_mb > 0
+- name: Disable swap
+  lineinfile:
+    path: /etc/fstab
+    regexp: 'swap'
+    state: absent
+- name: start-ntpd
+  service:
+    name: ntpd
+    state: started
+    enabled: yes  
+  become: yes
+- name: br_netfilter
+  modprobe:
+    name: br_netfilter
+    state: present
+- name: "fix iptables"
+  sysctl:
+    name: '{{ item }}'
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_items:
+    '{{ tables }}'
+  

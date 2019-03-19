@@ -1,0 +1,3 @@
+---
+# defaults file for k8s-worker
+master_ip: 192.168.56.15

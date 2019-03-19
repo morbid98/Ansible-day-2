@@ -1,0 +1,12 @@
+---
+# tasks file for k8s-worker
+- name: kube join
+  shell: |
+    kubeadm join '{{ master_ip }}':6443 --token $(head -1 /vagrant/token) \
+    --discovery-token-ca-cert-hash \
+    sha256:$(sed -n 2p /vagrant/token)
+  register: output
+  args:
+    creates:  /etc/kubernetes/bootstrap-kubelet.conf
+  failed_when: "'already exists' in output.stdout"
+  become: yes

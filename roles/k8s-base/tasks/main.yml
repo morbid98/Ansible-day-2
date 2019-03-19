@@ -1,0 +1,31 @@
+---
+# tasks file for k8s-base
+- name: "create kubik repo"
+  blockinfile:
+    path: /etc/yum.repos.d/kubernetes.repo
+    create: yes
+    block: |
+            [kubernetes]
+            name=Kubernetes
+            baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+            enabled=1
+            gpgcheck=1
+            repo_gpgcheck=1
+            gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+            exclude=kube*
+- name: Install a list of packages
+  yum:
+    name: '{{ to_install }}'
+    state: present
+    disable_excludes: kubernetes
+- name: start-kubelet
+  service:
+    name: '{{ to_install[2] }}'
+    state: started
+    enabled: yes
+  become: yes
+- name: get kubeadm version
+  shell: kubeadm version
+  register: kubeadm
+  changed_when: False
+  notify: kubeadm_facts

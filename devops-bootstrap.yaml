@@ -1,0 +1,25 @@
+- name: Install Web Service
+  hosts: master:worker
+  tasks:
+  - debug: 
+  - name: "Create user accounts and add users to groups"
+    user:
+      name: "devops"
+      groups: "wheel"
+      password: "{{ 'devops' | password_hash('sha512', 'mysecretsalt')}}"
+      append: yes
+  - name: Allow 'wheel' group to have passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+  - name: Creates directory
+    file:
+      path: /home/devops/.ssh
+      state: directory
+  - name: "Configure ssh access"
+    copy:
+      src: ~/ansible/day1/devops.pem.pub
+      dest: /home/devops/.ssh/authorized_keys
+    
